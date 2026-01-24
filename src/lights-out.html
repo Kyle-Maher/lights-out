@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lights Out</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .main-container {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+            max-width: 1400px;
+        }
+
+        .game-container {
+            text-align: center;
+        }
+
+        h1 {
+            color: white;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .instructions {
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .game-board {
+            display: inline-grid;
+            grid-template-columns: repeat(5, 80px);
+            grid-template-rows: repeat(5, 80px);
+            gap: 8px;
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        .light {
+            width: 80px;
+            height: 80px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .light.on {
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            box-shadow: 0 4px 15px rgba(253, 160, 133, 0.6);
+        }
+
+        .light.off {
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .light:hover {
+            transform: scale(1.05);
+        }
+
+        .light:active {
+            transform: scale(0.95);
+        }
+
+        .controls {
+            margin-top: 30px;
+        }
+
+        .btn {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.1em;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .moves {
+            color: white;
+            font-size: 1.3em;
+            margin-top: 20px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .win-message {
+            color: #f6d365;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-top: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            display: none;
+        }
+
+        .win-message.show {
+            display: block;
+        }
+
+        .strategy-panel {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            padding: 25px;
+            color: white;
+            width: 500px;
+            display: none;
+        }
+
+        .strategy-panel.visible {
+            display: block;
+        }
+
+        .toggle-guide-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+            padding: 10px 20px;
+            font-size: 1em;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .toggle-guide-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+
+        .strategy-panel h2 {
+            margin-bottom: 20px;
+            color: #f6d365;
+            font-size: 1.8em;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+        }
+
+        .tab {
+            background: transparent;
+            color: rgba(255,255,255,0.7);
+            border: none;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab:hover {
+            color: white;
+        }
+
+        .tab.active {
+            color: white;
+            border-bottom-color: #f6d365;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .strategy-text {
+            text-align: left;
+            line-height: 1.8;
+        }
+
+        .strategy-text p {
+            margin-bottom: 15px;
+        }
+
+        .strategy-text strong {
+            color: #f6d365;
+        }
+
+        .lookup-table {
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .lookup-table h3 {
+            margin-bottom: 15px;
+            color: #f6d365;
+        }
+
+        .table-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 8px 0;
+            font-family: monospace;
+            font-size: 0.95em;
+            padding: 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 5px;
+        }
+
+        .pattern {
+            display: flex;
+            gap: 4px;
+        }
+
+        .pattern-cell {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .pattern-cell.on {
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+        }
+
+        .pattern-cell.off {
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+        }
+
+        .arrow {
+            margin: 0 10px;
+            color: #f6d365;
+        }
+
+        .solution {
+            display: flex;
+            gap: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="game-container">
+            <h1>💡 Lights Out 💡</h1>
+            <p class="instructions">Click a light to toggle it and its neighbors. Turn all lights off to win!</p>
+            
+            <div class="game-board" id="gameBoard"></div>
+            
+            <div class="moves">Moves: <span id="moveCount">0</span></div>
+            <div class="win-message" id="winMessage">🎉 You won in <span id="finalMoves">0</span> moves! 🎉</div>
+            
+            <div class="controls">
+                <button class="btn" onclick="resetGame()">New Game</button>
+                <button class="toggle-guide-btn" onclick="toggleGuide()">📖 Show Strategy Guide</button>
+            </div>
+        </div>
+
+        <div class="strategy-panel" id="strategyPanel">
+            <h2>📖 Strategy Guide</h2>
+            
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('strategy')">Light Chasing</button>
+                <button class="tab" onclick="switchTab('lookup')">Lookup Table</button>
+            </div>
+
+            <div id="strategyTab" class="tab-content active">
+                <div class="strategy-text">
+                    <p><strong>What is Light Chasing?</strong></p>
+                    <p>Light chasing is a systematic method to solve any Lights Out puzzle. It works by processing the board row by row from top to bottom.</p>
+                    
+                    <p><strong>How to Chase:</strong></p>
+                    <p>1. Start with row 2 (second row from top)</p>
+                    <p>2. For each lit light in row 1, press the button directly below it in row 2</p>
+                    <p>3. This will turn off the lit light in row 1</p>
+                    <p>4. Continue this process for rows 2→3, 3→4, and 4→5</p>
+                    <p>5. After chasing through row 4, only row 5 (bottom) may have lights on</p>
+                    
+                    <p><strong>Solving Row 5:</strong></p>
+                    <p>6. Look at which lights are on in row 5</p>
+                    <p>7. Use the Lookup Table to find which buttons in row 1 to press</p>
+                    <p>8. Press those row 1 buttons, then chase again from top to bottom</p>
+                    <p>9. The entire board will be solved!</p>
+                    
+                    <p style="margin-top: 20px;"><strong>Why does this work?</strong></p>
+                    <p>Lights Out is based on linear algebra over GF(2). The light chasing method systematically eliminates possibilities until finding the unique solution that clears the board.</p>
+                </div>
+            </div>
+
+            <div id="lookupTab" class="tab-content">
+                <div class="lookup-table">
+                    <h3>Row 5 → Row 1 Solution</h3>
+                    <p style="font-size: 0.9em; margin-bottom: 15px;">Find your row 5 pattern (left), press the corresponding row 1 buttons (right):</p>
+                    <div id="lookupTableContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SIZE = 5;
+        let board = [];
+        let moves = 0;
+        let guideVisible = false;
+
+        // Lookup table - only solvable patterns
+        // Maps bottom row patterns to which buttons to press in top row
+        const lookupTable = [
+            { row5: [0,0,1,1,1], row1: [0,0,0,1,0] },
+            { row5: [0,1,0,1,0], row1: [0,1,0,0,1] },
+            { row5: [0,1,1,0,1], row1: [1,0,0,0,0] },
+            { row5: [1,0,0,0,1], row1: [0,0,0,1,1] },
+            { row5: [1,0,1,1,0], row1: [0,0,0,0,1] },
+            { row5: [1,1,0,1,1], row1: [0,0,1,0,0] },
+            { row5: [1,1,1,0,0], row1: [0,0,1,0,0] }
+        ];
+
+        function switchTab(tabName) {
+            // Update tab buttons
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update tab content
+            document.getElementById('strategyTab').classList.remove('active');
+            document.getElementById('lookupTab').classList.remove('active');
+            
+            if (tabName === 'strategy') {
+                document.getElementById('strategyTab').classList.add('active');
+            } else {
+                document.getElementById('lookupTab').classList.add('active');
+            }
+        }
+
+        function toggleGuide() {
+            const panel = document.getElementById('strategyPanel');
+            const btn = event.target;
+            guideVisible = !guideVisible;
+            
+            if (guideVisible) {
+                panel.classList.add('visible');
+                btn.textContent = '📖 Hide Strategy Guide';
+            } else {
+                panel.classList.remove('visible');
+                btn.textContent = '📖 Show Strategy Guide';
+            }
+        }
+
+        function generateLookupTableHTML() {
+            const container = document.getElementById('lookupTableContent');
+            container.innerHTML = '';
+
+            lookupTable.forEach(entry => {
+                const row = document.createElement('div');
+                row.className = 'table-row';
+
+                // Row 5 pattern
+                const row5Pattern = document.createElement('div');
+                row5Pattern.className = 'pattern';
+                entry.row5.forEach(state => {
+                    const cell = document.createElement('span');
+                    cell.className = `pattern-cell ${state ? 'on' : 'off'}`;
+                    row5Pattern.appendChild(cell);
+                });
+
+                // Arrow
+                const arrow = document.createElement('span');
+                arrow.className = 'arrow';
+                arrow.textContent = '→';
+
+                // Row 1 solution
+                const row1Solution = document.createElement('div');
+                row1Solution.className = 'solution';
+                entry.row1.forEach(state => {
+                    const cell = document.createElement('span');
+                    cell.className = `pattern-cell ${state ? 'on' : 'off'}`;
+                    row1Solution.appendChild(cell);
+                });
+
+                row.appendChild(row5Pattern);
+                row.appendChild(arrow);
+                row.appendChild(row1Solution);
+                container.appendChild(row);
+            });
+        }
+
+        function initGame() {
+            const gameBoard = document.getElementById('gameBoard');
+            gameBoard.innerHTML = '';
+            board = [];
+            moves = 0;
+            updateMoveCount();
+            hideWinMessage();
+
+            // Initialize board with all lights off
+            for (let i = 0; i < SIZE; i++) {
+                board[i] = [];
+                for (let j = 0; j < SIZE; j++) {
+                    board[i][j] = false;
+                }
+            }
+
+            // Generate a random solvable configuration by simulating random moves
+            const numMoves = Math.floor(Math.random() * 10) + 5; // 5-14 random moves
+            for (let m = 0; m < numMoves; m++) {
+                const randomRow = Math.floor(Math.random() * SIZE);
+                const randomCol = Math.floor(Math.random() * SIZE);
+                
+                // Simulate a move without incrementing the move counter
+                toggle(randomRow, randomCol);
+                if (randomRow > 0) toggle(randomRow - 1, randomCol);
+                if (randomRow < SIZE - 1) toggle(randomRow + 1, randomCol);
+                if (randomCol > 0) toggle(randomRow, randomCol - 1);
+                if (randomCol < SIZE - 1) toggle(randomRow, randomCol + 1);
+            }
+
+            // Create the visual board
+            for (let i = 0; i < SIZE; i++) {
+                for (let j = 0; j < SIZE; j++) {
+                    const light = document.createElement('button');
+                    light.className = board[i][j] ? 'light on' : 'light off';
+                    light.dataset.row = i;
+                    light.dataset.col = j;
+                    light.onclick = () => toggleLight(i, j);
+                    
+                    gameBoard.appendChild(light);
+                }
+            }
+        }
+
+        function toggleLight(row, col) {
+            // Toggle the clicked light
+            toggle(row, col);
+            
+            // Toggle neighbors (up, down, left, right)
+            if (row > 0) toggle(row - 1, col);
+            if (row < SIZE - 1) toggle(row + 1, col);
+            if (col > 0) toggle(row, col - 1);
+            if (col < SIZE - 1) toggle(row, col + 1);
+            
+            moves++;
+            updateMoveCount();
+            updateDisplay();
+            checkWin();
+        }
+
+        function toggle(row, col) {
+            board[row][col] = !board[row][col];
+        }
+
+        function updateDisplay() {
+            const lights = document.querySelectorAll('.light');
+            lights.forEach(light => {
+                const row = parseInt(light.dataset.row);
+                const col = parseInt(light.dataset.col);
+                
+                if (board[row][col]) {
+                    light.classList.add('on');
+                    light.classList.remove('off');
+                } else {
+                    light.classList.add('off');
+                    light.classList.remove('on');
+                }
+            });
+        }
+
+        function checkWin() {
+            const allOff = board.every(row => row.every(cell => !cell));
+            
+            if (allOff) {
+                document.getElementById('finalMoves').textContent = moves;
+                showWinMessage();
+            }
+        }
+
+        function updateMoveCount() {
+            document.getElementById('moveCount').textContent = moves;
+        }
+
+        function showWinMessage() {
+            document.getElementById('winMessage').classList.add('show');
+        }
+
+        function hideWinMessage() {
+            document.getElementById('winMessage').classList.remove('show');
+        }
+
+        function resetGame() {
+            initGame();
+        }
+
+        // Initialize the game when page loads
+        initGame();
+        generateLookupTableHTML();
+    </script>
+</body>
+</html>
