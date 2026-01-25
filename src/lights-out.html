@@ -158,6 +158,13 @@
             text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
         }
 
+        .moves-container {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
         .win-message {
             color: #f6d365;
             font-size: 1.5em;
@@ -328,12 +335,15 @@
             
             <div class="game-board" id="gameBoard"></div>
             
-            <div class="moves">Moves: <span id="moveCount">0</span></div>
+            <div class="moves-container">
+                <div class="moves">Target: <span id="targetMoves">0</span></div>
+                <div class="moves">Moves: <span id="moveCount">0</span></div>
+            </div>
             <div class="win-message" id="winMessage">🎉 You won in <span id="finalMoves">0</span> moves! 🎉</div>
             
             <div class="controls">
                 <button class="btn" onclick="resetGame()">New Game</button>
-                <button class="toggle-guide-btn" onclick="toggleGuide()">📖 Show Strategy Guide</button>
+                <button class="toggle-guide-btn" id="guideBtn" onclick="toggleGuide()">📖 Show 5x5 Strategy Guide</button>
             </div>
         </div>
 
@@ -382,6 +392,7 @@
         let SIZE = 5;
         let board = [];
         let moves = 0;
+        let targetMoves = 0;
         let guideVisible = false;
 
         // Lookup table - only solvable patterns
@@ -415,15 +426,15 @@
 
         function toggleGuide() {
             const panel = document.getElementById('strategyPanel');
-            const btn = event.target;
+            const btn = document.getElementById('guideBtn');
             guideVisible = !guideVisible;
             
             if (guideVisible) {
                 panel.classList.add('visible');
-                btn.textContent = '📖 Hide Strategy Guide';
+                btn.textContent = '📖 Hide 5x5 Strategy Guide';
             } else {
                 panel.classList.remove('visible');
-                btn.textContent = '📖 Show Strategy Guide';
+                btn.textContent = '📖 Show 5x5 Strategy Guide';
             }
         }
 
@@ -487,10 +498,22 @@
             }
 
             // Generate a random solvable configuration by simulating random moves
-            const numMoves = Math.floor(Math.random() * 10) + 5; // 5-14 random moves
+            const numMoves = Math.floor(Math.random() * (SIZE + 1)) + SIZE; // SIZE to 2*SIZE random moves
+            const usedPositions = new Set();
+            const initialMoves = [];
+            
             for (let m = 0; m < numMoves; m++) {
-                const randomRow = Math.floor(Math.random() * SIZE);
-                const randomCol = Math.floor(Math.random() * SIZE);
+                let randomRow, randomCol, posKey;
+                
+                // Keep trying until we find an unused position
+                do {
+                    randomRow = Math.floor(Math.random() * SIZE);
+                    randomCol = Math.floor(Math.random() * SIZE);
+                    posKey = `${randomRow},${randomCol}`;
+                } while (usedPositions.has(posKey));
+                
+                usedPositions.add(posKey);
+                initialMoves.push({ row: randomRow, col: randomCol });
                 
                 // Simulate a move without incrementing the move counter
                 toggle(randomRow, randomCol);
@@ -499,6 +522,18 @@
                 if (randomCol > 0) toggle(randomRow, randomCol - 1);
                 if (randomCol < SIZE - 1) toggle(randomRow, randomCol + 1);
             }
+            
+            // Store initialization info for debugging
+            targetMoves = initialMoves.length;
+            window.gameInitInfo = {
+                size: SIZE,
+                numMoves: initialMoves.length,
+                moves: initialMoves
+            };
+            console.log(`Game initialized with ${initialMoves.length} unique moves:`, initialMoves);
+            
+            // Update target moves display
+            document.getElementById('targetMoves').textContent = targetMoves;
 
             // Create the visual board
             for (let i = 0; i < SIZE; i++) {
