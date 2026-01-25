@@ -28,6 +28,13 @@
             max-width: 1400px;
         }
 
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            margin-top: 146px;
+        }
+
         .size-selector {
             background: rgba(255,255,255,0.1);
             border-radius: 15px;
@@ -75,16 +82,21 @@
             text-align: center;
         }
 
+        .game-header {
+            margin-bottom: 30px;
+        }
+
         h1 {
             color: white;
             margin-bottom: 10px;
             font-size: 2.5em;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-top: 0;
         }
 
         .instructions {
             color: rgba(255,255,255,0.9);
-            margin-bottom: 30px;
+            margin-bottom: 0;
             font-size: 1.1em;
         }
 
@@ -96,6 +108,7 @@
             border-radius: 15px;
             backdrop-filter: blur(10px);
             box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            margin-top: 30px;
         }
 
         .light {
@@ -320,18 +333,22 @@
 </head>
 <body>
     <div class="main-container">
-        <div class="size-selector">
-            <h3>Board Size</h3>
-            <button class="size-option" onclick="changeSize(3)">3x3</button>
-            <button class="size-option" onclick="changeSize(4)">4x4</button>
-            <button class="size-option active" onclick="changeSize(5)">5x5</button>
-            <button class="size-option" onclick="changeSize(6)">6x6</button>
-            <button class="size-option" onclick="changeSize(7)">7x7</button>
+        <div class="left-panel">
+            <div class="size-selector">
+                <h3>Board Size</h3>
+                <button class="size-option" onclick="changeSize(3)">3x3</button>
+                <button class="size-option" onclick="changeSize(4)">4x4</button>
+                <button class="size-option active" onclick="changeSize(5)">5x5</button>
+                <button class="size-option" onclick="changeSize(6)">6x6</button>
+                <button class="size-option" onclick="changeSize(7)">7x7</button>
+            </div>
         </div>
 
         <div class="game-container">
-            <h1>💡 Lights Out 💡</h1>
-            <p class="instructions">Click a light to toggle it and its neighbors. Turn all lights off to win!</p>
+            <div class="game-header">
+                <h1>💡 Lights Out 💡</h1>
+                <p class="instructions">Click a light to toggle it and its neighbors. Turn all lights off to win!</p>
+            </div>
             
             <div class="game-board" id="gameBoard"></div>
             
