@@ -100,6 +100,14 @@
             font-size: 1.1em;
         }
 
+        .mode-indicator {
+            color: #f6d365;
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-top: 10px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+
         .game-board {
             display: inline-grid;
             gap: 8px;
@@ -109,6 +117,11 @@
             backdrop-filter: blur(10px);
             box-shadow: 0 8px 32px rgba(0,0,0,0.3);
             margin-top: 30px;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .game-board.setup-mode {
+            box-shadow: 0 8px 32px rgba(246, 211, 101, 0.5);
         }
 
         .light {
@@ -162,6 +175,17 @@
 
         .btn:active {
             transform: translateY(0);
+        }
+
+        .btn.setup-mode {
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            color: #2d3748;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .moves {
@@ -348,6 +372,7 @@
             <div class="game-header">
                 <h1>💡 Lights Out 💡</h1>
                 <p class="instructions">Click a light to toggle it and its neighbors. Turn all lights off to win!</p>
+                <div class="mode-indicator" id="modeIndicator" style="display: none;"></div>
             </div>
             
             <div class="game-board" id="gameBoard"></div>
@@ -359,7 +384,9 @@
             <div class="win-message" id="winMessage">🎉 You won in <span id="finalMoves">0</span> moves! 🎉</div>
             
             <div class="controls">
-                <button class="btn" onclick="resetGame()">New Game</button>
+                <button class="btn" id="newGameBtn" onclick="resetGame()">New Game</button>
+                <button class="btn" id="setupBtn" onclick="toggleSetupMode()">🎨 Create Board</button>
+                <button class="btn" id="startBtn" onclick="startFromSetup()" style="display: none;">▶️ Start Game</button>
                 <button class="toggle-guide-btn" id="guideBtn" onclick="toggleGuide()">📖 Show 5x5 Strategy Guide</button>
             </div>
         </div>
@@ -411,6 +438,7 @@
         let moves = 0;
         let targetMoves = 0;
         let guideVisible = false;
+        let setupMode = false;
 
         // Lookup table - only solvable patterns
         // Maps bottom row patterns to which buttons to press in top row
@@ -490,6 +518,115 @@
                 row.appendChild(arrow);
                 row.appendChild(row1Solution);
                 container.appendChild(row);
+            });
+        }
+
+        function toggleSetupMode() {
+            setupMode = !setupMode;
+            const gameBoard = document.getElementById('gameBoard');
+            const setupBtn = document.getElementById('setupBtn');
+            const startBtn = document.getElementById('startBtn');
+            const newGameBtn = document.getElementById('newGameBtn');
+            const modeIndicator = document.getElementById('modeIndicator');
+            
+            if (setupMode) {
+                // Enter setup mode
+                gameBoard.classList.add('setup-mode');
+                setupBtn.classList.add('setup-mode');
+                setupBtn.textContent = '❌ Cancel Setup';
+                startBtn.style.display = 'inline-block';
+                newGameBtn.disabled = true;
+                modeIndicator.textContent = '🎨 Setup Mode: Click cells to toggle individual lights';
+                modeIndicator.style.display = 'block';
+                
+                // Reset board to all off
+                initSetupBoard();
+            } else {
+                // Exit setup mode
+                gameBoard.classList.remove('setup-mode');
+                setupBtn.classList.remove('setup-mode');
+                setupBtn.textContent = '🎨 Create Board';
+                startBtn.style.display = 'none';
+                newGameBtn.disabled = false;
+                modeIndicator.style.display = 'none';
+                
+                // Return to normal game
+                resetGame();
+            }
+        }
+
+        function initSetupBoard() {
+            const gameBoard = document.getElementById('gameBoard');
+            gameBoard.innerHTML = '';
+            board = [];
+            moves = 0;
+            updateMoveCount();
+            hideWinMessage();
+
+            // Set grid layout based on SIZE
+            const cellSize = SIZE <= 5 ? 80 : (SIZE === 6 ? 70 : 60);
+            gameBoard.style.gridTemplateColumns = `repeat(${SIZE}, ${cellSize}px)`;
+            gameBoard.style.gridTemplateRows = `repeat(${SIZE}, ${cellSize}px)`;
+
+            // Initialize board with all lights off
+            for (let i = 0; i < SIZE; i++) {
+                board[i] = [];
+                for (let j = 0; j < SIZE; j++) {
+                    board[i][j] = false;
+                }
+            }
+
+            // Create the visual board
+            for (let i = 0; i < SIZE; i++) {
+                for (let j = 0; j < SIZE; j++) {
+                    const light = document.createElement('button');
+                    light.className = 'light off';
+                    light.style.width = `${cellSize}px`;
+                    light.style.height = `${cellSize}px`;
+                    light.dataset.row = i;
+                    light.dataset.col = j;
+                    light.onclick = () => toggleSetupLight(i, j);
+                    
+                    gameBoard.appendChild(light);
+                }
+            }
+            
+            document.getElementById('targetMoves').textContent = '?';
+        }
+
+        function toggleSetupLight(row, col) {
+            // In setup mode, only toggle the clicked light
+            board[row][col] = !board[row][col];
+            updateDisplay();
+        }
+
+        function startFromSetup() {
+            // Exit setup mode and start playing with the current board
+            setupMode = false;
+            const gameBoard = document.getElementById('gameBoard');
+            const setupBtn = document.getElementById('setupBtn');
+            const startBtn = document.getElementById('startBtn');
+            const newGameBtn = document.getElementById('newGameBtn');
+            const modeIndicator = document.getElementById('modeIndicator');
+            
+            gameBoard.classList.remove('setup-mode');
+            setupBtn.classList.remove('setup-mode');
+            setupBtn.textContent = '🎨 Create Board';
+            startBtn.style.display = 'none';
+            newGameBtn.disabled = false;
+            modeIndicator.style.display = 'none';
+            
+            // Reset move counter and update click handlers
+            moves = 0;
+            updateMoveCount();
+            document.getElementById('targetMoves').textContent = '?';
+            
+            // Update all light click handlers to normal game mode
+            const lights = document.querySelectorAll('.light');
+            lights.forEach(light => {
+                const row = parseInt(light.dataset.row);
+                const col = parseInt(light.dataset.col);
+                light.onclick = () => toggleLight(row, col);
             });
         }
 
@@ -637,8 +774,13 @@
             buttons.forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
             
-            // Start new game with new size
-            initGame();
+            // If in setup mode, reset the setup board
+            if (setupMode) {
+                initSetupBoard();
+            } else {
+                // Start new game with new size
+                initGame();
+            }
         }
 
         // Initialize the game when page loads
