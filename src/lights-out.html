@@ -353,6 +353,69 @@
             display: flex;
             gap: 4px;
         }
+
+        .light.solution-highlight {
+            box-shadow: 0 0 20px 5px rgba(46, 213, 115, 0.8), 0 4px 15px rgba(253, 160, 133, 0.6);
+            position: relative;
+        }
+
+        .light.solution-highlight::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2em;
+            color: rgba(46, 213, 115, 1);
+            text-shadow: 0 0 10px rgba(46, 213, 115, 0.8);
+            font-weight: bold;
+            pointer-events: none;
+        }
+
+        .light.solution-pressed {
+            box-shadow: 0 0 20px 5px rgba(108, 117, 125, 0.6), 0 4px 15px rgba(253, 160, 133, 0.6);
+            position: relative;
+        }
+
+        .light.solution-pressed::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2em;
+            color: rgba(108, 117, 125, 0.8);
+            text-shadow: 0 0 10px rgba(108, 117, 125, 0.5);
+            font-weight: bold;
+            text-decoration: line-through;
+            pointer-events: none;
+        }
+
+        .solution-controls {
+            margin-top: 15px;
+        }
+
+        .solution-btn {
+            background: rgba(46, 213, 115, 0.2);
+            color: white;
+            border: 2px solid rgba(46, 213, 115, 0.5);
+            padding: 10px 20px;
+            font-size: 1em;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .solution-btn:hover {
+            background: rgba(46, 213, 115, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .solution-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: none;
+        }
     </style>
 </head>
 <body>
@@ -388,6 +451,10 @@
                 <button class="btn" id="setupBtn" onclick="toggleSetupMode()">🎨 Create Board</button>
                 <button class="btn" id="startBtn" onclick="startFromSetup()" style="display: none;">▶️ Start Game</button>
                 <button class="toggle-guide-btn" id="guideBtn" onclick="toggleGuide()">📖 Show 5x5 Strategy Guide</button>
+            </div>
+            
+            <div class="solution-controls">
+                <button class="solution-btn" id="solutionBtn" onclick="toggleSolution()">💡 Show Target Solution</button>
             </div>
         </div>
 
@@ -439,6 +506,9 @@
         let targetMoves = 0;
         let guideVisible = false;
         let setupMode = false;
+        let solutionVisible = false;
+        let solutionMoves = []; // Store the moves used to generate the puzzle
+        let pressedSolutionCells = new Set(); // Track which solution cells have been pressed
 
         // Lookup table - only solvable patterns
         // Maps bottom row patterns to which buttons to press in top row
@@ -481,6 +551,50 @@
                 panel.classList.remove('visible');
                 btn.textContent = '📖 Show 5x5 Strategy Guide';
             }
+        }
+
+        function toggleSolution() {
+            solutionVisible = !solutionVisible;
+            const btn = document.getElementById('solutionBtn');
+            
+            if (solutionVisible) {
+                btn.textContent = '🔒 Hide Target Solution';
+                highlightSolution();
+            } else {
+                btn.textContent = '💡 Show Target Solution';
+                clearSolutionHighlight();
+            }
+        }
+
+        function highlightSolution() {
+            // Clear any existing highlights
+            clearSolutionHighlight();
+            
+            // Highlight each cell in the solution
+            solutionMoves.forEach(move => {
+                const lights = document.querySelectorAll('.light');
+                lights.forEach(light => {
+                    const row = parseInt(light.dataset.row);
+                    const col = parseInt(light.dataset.col);
+                    
+                    if (row === move.row && col === move.col) {
+                        const cellKey = `${row},${col}`;
+                        if (pressedSolutionCells.has(cellKey)) {
+                            light.classList.add('solution-pressed');
+                        } else {
+                            light.classList.add('solution-highlight');
+                        }
+                    }
+                });
+            });
+        }
+
+        function clearSolutionHighlight() {
+            const lights = document.querySelectorAll('.light');
+            lights.forEach(light => {
+                light.classList.remove('solution-highlight');
+                light.classList.remove('solution-pressed');
+            });
         }
 
         function generateLookupTableHTML() {
@@ -528,6 +642,7 @@
             const startBtn = document.getElementById('startBtn');
             const newGameBtn = document.getElementById('newGameBtn');
             const modeIndicator = document.getElementById('modeIndicator');
+            const solutionBtn = document.getElementById('solutionBtn');
             
             if (setupMode) {
                 // Enter setup mode
@@ -536,8 +651,15 @@
                 setupBtn.textContent = '❌ Cancel Setup';
                 startBtn.style.display = 'inline-block';
                 newGameBtn.disabled = true;
+                solutionBtn.disabled = true;
                 modeIndicator.textContent = '🎨 Setup Mode: Click cells to toggle individual lights';
                 modeIndicator.style.display = 'block';
+                
+                // Clear solution display
+                solutionVisible = false;
+                pressedSolutionCells.clear();
+                clearSolutionHighlight();
+                solutionBtn.textContent = '💡 Show Target Solution';
                 
                 // Reset board to all off
                 initSetupBoard();
@@ -548,6 +670,7 @@
                 setupBtn.textContent = '🎨 Create Board';
                 startBtn.style.display = 'none';
                 newGameBtn.disabled = false;
+                solutionBtn.disabled = false;
                 modeIndicator.style.display = 'none';
                 
                 // Return to normal game
@@ -562,6 +685,12 @@
             moves = 0;
             updateMoveCount();
             hideWinMessage();
+            
+            // Clear solution data for custom boards
+            solutionMoves = [];
+            solutionVisible = false;
+            pressedSolutionCells.clear();
+            clearSolutionHighlight();
 
             // Set grid layout based on SIZE
             const cellSize = SIZE <= 5 ? 80 : (SIZE === 6 ? 70 : 60);
@@ -608,6 +737,7 @@
             const startBtn = document.getElementById('startBtn');
             const newGameBtn = document.getElementById('newGameBtn');
             const modeIndicator = document.getElementById('modeIndicator');
+            const solutionBtn = document.getElementById('solutionBtn');
             
             gameBoard.classList.remove('setup-mode');
             setupBtn.classList.remove('setup-mode');
@@ -615,6 +745,13 @@
             startBtn.style.display = 'none';
             newGameBtn.disabled = false;
             modeIndicator.style.display = 'none';
+            
+            // Keep solution button disabled for custom boards (no known solution)
+            solutionBtn.disabled = true;
+            solutionVisible = false;
+            pressedSolutionCells.clear();
+            clearSolutionHighlight();
+            solutionBtn.textContent = '💡 Show Target Solution';
             
             // Reset move counter and update click handlers
             moves = 0;
@@ -637,6 +774,14 @@
             moves = 0;
             updateMoveCount();
             hideWinMessage();
+            
+            // Reset solution state
+            solutionVisible = false;
+            pressedSolutionCells.clear();
+            clearSolutionHighlight();
+            const solutionBtn = document.getElementById('solutionBtn');
+            solutionBtn.textContent = '💡 Show Target Solution';
+            solutionBtn.disabled = false;
 
             // Set grid layout based on SIZE
             const cellSize = SIZE <= 5 ? 80 : (SIZE === 6 ? 70 : 60);
@@ -677,6 +822,9 @@
                 if (randomCol < SIZE - 1) toggle(randomRow, randomCol + 1);
             }
             
+            // Store the solution moves
+            solutionMoves = initialMoves;
+            
             // Store initialization info for debugging
             targetMoves = initialMoves.length;
             window.gameInitInfo = {
@@ -706,6 +854,20 @@
         }
 
         function toggleLight(row, col) {
+            // If solution is visible, track if this is a solution cell being pressed
+            if (solutionVisible) {
+                const cellKey = `${row},${col}`;
+                const isSolutionCell = solutionMoves.some(move => move.row === row && move.col === col);
+                
+                if (isSolutionCell) {
+                    if (pressedSolutionCells.has(cellKey)) {
+                        pressedSolutionCells.delete(cellKey);
+                    } else {
+                        pressedSolutionCells.add(cellKey);
+                    }
+                }
+            }
+            
             // Toggle the clicked light
             toggle(row, col);
             
@@ -739,6 +901,11 @@
                     light.classList.remove('on');
                 }
             });
+            
+            // Re-apply solution highlights if they're visible
+            if (solutionVisible) {
+                highlightSolution();
+            }
         }
 
         function checkWin() {
