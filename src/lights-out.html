@@ -512,6 +512,74 @@
             cursor: not-allowed;
             transform: none;
         }
+
+        @media (max-width: 768px) {
+            body {
+                align-items: flex-start;
+                padding: 16px;
+            }
+
+            .main-container {
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+                width: 100%;
+            }
+
+            .left-panel {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+                margin-top: 0;
+                gap: 12px;
+                width: 100%;
+            }
+
+            .size-selector, .color-selector {
+                width: auto;
+                flex: 1 1 140px;
+                padding: 15px;
+            }
+
+            .size-selector h3, .color-selector h3 {
+                font-size: 1.1em;
+                margin-bottom: 10px;
+            }
+
+            .size-option, .color-option {
+                padding: 8px;
+                margin: 4px 0;
+                min-height: 44px;
+                font-size: 0.9em;
+            }
+
+            h1 {
+                font-size: 1.6em;
+            }
+
+            .btn {
+                padding: 10px 18px;
+                font-size: 1em;
+                margin: 0 5px 8px;
+                min-height: 44px;
+            }
+
+            .toggle-guide-btn, .solution-btn {
+                min-height: 44px;
+            }
+
+            .controls {
+                margin-top: 20px;
+            }
+
+            .moves-container {
+                gap: 20px;
+            }
+
+            .strategy-panel {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body class="theme-purple">
@@ -800,6 +868,26 @@
             }
         }
 
+        function getCellSize() {
+            const base = SIZE <= 5 ? 80 : (SIZE === 6 ? 70 : 60);
+            const gap = 8;
+            const padding = 48;
+            const maxBoard = window.innerWidth - padding;
+            const maxCell = Math.floor((maxBoard - gap * (SIZE - 1)) / SIZE);
+            return Math.min(base, maxCell);
+        }
+
+        function resizeBoard() {
+            const gameBoard = document.getElementById('gameBoard');
+            const cellSize = getCellSize();
+            gameBoard.style.gridTemplateColumns = `repeat(${SIZE}, ${cellSize}px)`;
+            gameBoard.style.gridTemplateRows = `repeat(${SIZE}, ${cellSize}px)`;
+            document.querySelectorAll('.light').forEach(light => {
+                light.style.width = `${cellSize}px`;
+                light.style.height = `${cellSize}px`;
+            });
+        }
+
         function initSetupBoard() {
             const gameBoard = document.getElementById('gameBoard');
             gameBoard.innerHTML = '';
@@ -813,7 +901,7 @@
             pressedSolutionCells.clear();
             clearSolutionHighlight();
 
-            const cellSize = SIZE <= 5 ? 80 : (SIZE === 6 ? 70 : 60);
+            const cellSize = getCellSize();
             gameBoard.style.gridTemplateColumns = `repeat(${SIZE}, ${cellSize}px)`;
             gameBoard.style.gridTemplateRows = `repeat(${SIZE}, ${cellSize}px)`;
 
@@ -895,7 +983,7 @@
             solutionBtn.textContent = '💡 Show Target Solution';
             solutionBtn.disabled = false;
 
-            const cellSize = SIZE <= 5 ? 80 : (SIZE === 6 ? 70 : 60);
+            const cellSize = getCellSize();
             gameBoard.style.gridTemplateColumns = `repeat(${SIZE}, ${cellSize}px)`;
             gameBoard.style.gridTemplateRows = `repeat(${SIZE}, ${cellSize}px)`;
 
@@ -1040,6 +1128,7 @@
 
         initGame();
         generateLookupTableHTML();
+        window.addEventListener('resize', resizeBoard);
     </script>
 </body>
 </html>
