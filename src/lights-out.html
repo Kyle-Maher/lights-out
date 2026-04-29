@@ -702,8 +702,84 @@
         let setupMode = false;
         let solutionVisible = false;
         let solutionMoves = [];
-        let pressedSolutionCells = new Set();
         let currentTheme = 'purple';
+
+        function computeOptimalSolution(boardState, size) {
+            const n = size * size;
+            const matrix = Array.from({ length: n }, () => new Uint8Array(n + 1));
+
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const j = r * size + c;
+                    matrix[j][j] = 1;
+                    if (r > 0) matrix[(r - 1) * size + c][j] = 1;
+                    if (r < size - 1) matrix[(r + 1) * size + c][j] = 1;
+                    if (c > 0) matrix[r * size + (c - 1)][j] = 1;
+                    if (c < size - 1) matrix[r * size + (c + 1)][j] = 1;
+                }
+            }
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    matrix[r * size + c][n] = boardState[r][c] ? 1 : 0;
+                }
+            }
+
+            const pivotCol = [];
+            let row = 0;
+            for (let col = 0; col < n && row < n; col++) {
+                let pivotRow = -1;
+                for (let r = row; r < n; r++) {
+                    if (matrix[r][col] === 1) { pivotRow = r; break; }
+                }
+                if (pivotRow === -1) continue;
+                if (pivotRow !== row) {
+                    const tmp = matrix[row]; matrix[row] = matrix[pivotRow]; matrix[pivotRow] = tmp;
+                }
+                pivotCol.push(col);
+                for (let r = 0; r < n; r++) {
+                    if (r !== row && matrix[r][col] === 1) {
+                        for (let c = col; c <= n; c++) matrix[r][c] ^= matrix[row][c];
+                    }
+                }
+                row++;
+            }
+            const rank = row;
+
+            for (let r = rank; r < n; r++) {
+                if (matrix[r][n] === 1) return null;
+            }
+
+            const isPivot = new Uint8Array(n);
+            for (let r = 0; r < rank; r++) isPivot[pivotCol[r]] = 1;
+            const freeVars = [];
+            for (let c = 0; c < n; c++) if (!isPivot[c]) freeVars.push(c);
+
+            const k = freeVars.length;
+            let bestX = null;
+            let bestCount = Infinity;
+
+            for (let mask = 0; mask < (1 << k); mask++) {
+                const x = new Uint8Array(n);
+                for (let i = 0; i < k; i++) x[freeVars[i]] = (mask >> i) & 1;
+                for (let r = rank - 1; r >= 0; r--) {
+                    const pc = pivotCol[r];
+                    let val = matrix[r][n];
+                    for (let c = pc + 1; c < n; c++) {
+                        if (matrix[r][c] === 1) val ^= x[c];
+                    }
+                    x[pc] = val;
+                }
+                let count = 0;
+                for (let i = 0; i < n; i++) count += x[i];
+                if (count < bestCount) { bestCount = count; bestX = x; }
+            }
+
+            const result = [];
+            for (let i = 0; i < n; i++) {
+                if (bestX[i]) result.push({ row: Math.floor(i / size), col: i % size });
+            }
+            return result;
+        }
 
         const lookupTable = [
             { row5: [0,0,1,1,1], row1: [0,0,0,1,0] },
@@ -758,8 +834,9 @@
         function toggleSolution() {
             solutionVisible = !solutionVisible;
             const btn = document.getElementById('solutionBtn');
-            
+
             if (solutionVisible) {
+                solutionMoves = computeOptimalSolution(board, SIZE) || [];
                 btn.textContent = '🔒 Hide Target Solution';
                 highlightSolution();
             } else {
@@ -770,22 +847,12 @@
 
         function highlightSolution() {
             clearSolutionHighlight();
-            
-            solutionMoves.forEach(move => {
-                const lights = document.querySelectorAll('.light');
-                lights.forEach(light => {
-                    const row = parseInt(light.dataset.row);
-                    const col = parseInt(light.dataset.col);
-                    
-                    if (row === move.row && col === move.col) {
-                        const cellKey = `${row},${col}`;
-                        if (pressedSolutionCells.has(cellKey)) {
-                            light.classList.add('solution-pressed');
-                        } else {
-                            light.classList.add('solution-highlight');
-                        }
-                    }
-                });
+            if (!solutionMoves) return;
+
+            const cells = new Set(solutionMoves.map(m => `${m.row},${m.col}`));
+            document.querySelectorAll('.light').forEach(light => {
+                const key = `${light.dataset.row},${light.dataset.col}`;
+                if (cells.has(key)) light.classList.add('solution-highlight');
             });
         }
 
@@ -852,10 +919,9 @@
                 modeIndicator.style.display = 'block';
                 
                 solutionVisible = false;
-                pressedSolutionCells.clear();
                 clearSolutionHighlight();
                 solutionBtn.textContent = '💡 Show Target Solution';
-                
+
                 initSetupBoard();
             } else {
                 gameBoard.classList.remove('setup-mode');
@@ -900,7 +966,6 @@
             
             solutionMoves = [];
             solutionVisible = false;
-            pressedSolutionCells.clear();
             clearSolutionHighlight();
 
             const cellSize = getCellSize();
@@ -944,24 +1009,38 @@
             const newGameBtn = document.getElementById('newGameBtn');
             const modeIndicator = document.getElementById('modeIndicator');
             const solutionBtn = document.getElementById('solutionBtn');
-            
+
             gameBoard.classList.remove('setup-mode');
             setupBtn.classList.remove('setup-mode');
             setupBtn.textContent = '🎨 Create Board';
             startBtn.style.display = 'none';
             newGameBtn.disabled = false;
-            modeIndicator.style.display = 'none';
-            
-            solutionBtn.disabled = true;
+
             solutionVisible = false;
-            pressedSolutionCells.clear();
             clearSolutionHighlight();
             solutionBtn.textContent = '💡 Show Target Solution';
-            
+
             moves = 0;
             updateMoveCount();
-            document.getElementById('targetMoves').textContent = '?';
-            
+
+            initialBoard = board.map(row => [...row]);
+
+            const optimal = computeOptimalSolution(board, SIZE);
+            if (optimal === null) {
+                solutionMoves = [];
+                solutionBtn.disabled = true;
+                targetMoves = 0;
+                document.getElementById('targetMoves').textContent = '∞';
+                modeIndicator.textContent = '⚠️ Unsolvable board — no solution exists';
+                modeIndicator.style.display = 'block';
+            } else {
+                solutionMoves = optimal;
+                solutionBtn.disabled = false;
+                targetMoves = optimal.length;
+                document.getElementById('targetMoves').textContent = targetMoves;
+                modeIndicator.style.display = 'none';
+            }
+
             const lights = document.querySelectorAll('.light');
             lights.forEach(light => {
                 const row = parseInt(light.dataset.row);
@@ -979,7 +1058,6 @@
             hideWinMessage();
             
             solutionVisible = false;
-            pressedSolutionCells.clear();
             clearSolutionHighlight();
             const solutionBtn = document.getElementById('solutionBtn');
             solutionBtn.textContent = '💡 Show Target Solution';
@@ -998,29 +1076,27 @@
 
             const numMoves = Math.floor(Math.random() * (SIZE + 1)) + SIZE;
             const usedPositions = new Set();
-            const initialMoves = [];
-            
+
             for (let m = 0; m < numMoves; m++) {
                 let randomRow, randomCol, posKey;
-                
+
                 do {
                     randomRow = Math.floor(Math.random() * SIZE);
                     randomCol = Math.floor(Math.random() * SIZE);
                     posKey = `${randomRow},${randomCol}`;
                 } while (usedPositions.has(posKey));
-                
+
                 usedPositions.add(posKey);
-                initialMoves.push({ row: randomRow, col: randomCol });
-                
+
                 toggle(randomRow, randomCol);
                 if (randomRow > 0) toggle(randomRow - 1, randomCol);
                 if (randomRow < SIZE - 1) toggle(randomRow + 1, randomCol);
                 if (randomCol > 0) toggle(randomRow, randomCol - 1);
                 if (randomCol < SIZE - 1) toggle(randomRow, randomCol + 1);
             }
-            
-            solutionMoves = initialMoves;
-            targetMoves = initialMoves.length;
+
+            solutionMoves = computeOptimalSolution(board, SIZE) || [];
+            targetMoves = solutionMoves.length;
             document.getElementById('targetMoves').textContent = targetMoves;
             initialBoard = board.map(row => [...row]);
 
@@ -1045,37 +1121,30 @@
             updateMoveCount();
             hideWinMessage();
             solutionVisible = false;
-            pressedSolutionCells.clear();
             clearSolutionHighlight();
             const solutionBtn = document.getElementById('solutionBtn');
             solutionBtn.textContent = '💡 Show Target Solution';
-            solutionBtn.disabled = false;
+            const optimal = computeOptimalSolution(board, SIZE);
+            solutionMoves = optimal || [];
+            solutionBtn.disabled = optimal === null;
             updateDisplay();
         }
 
         function toggleLight(row, col) {
-            if (solutionVisible) {
-                const cellKey = `${row},${col}`;
-                const isSolutionCell = solutionMoves.some(move => move.row === row && move.col === col);
-                
-                if (isSolutionCell) {
-                    if (pressedSolutionCells.has(cellKey)) {
-                        pressedSolutionCells.delete(cellKey);
-                    } else {
-                        pressedSolutionCells.add(cellKey);
-                    }
-                }
-            }
-            
             toggle(row, col);
-            
+
             if (row > 0) toggle(row - 1, col);
             if (row < SIZE - 1) toggle(row + 1, col);
             if (col > 0) toggle(row, col - 1);
             if (col < SIZE - 1) toggle(row, col + 1);
-            
+
             moves++;
             updateMoveCount();
+
+            if (solutionVisible) {
+                solutionMoves = computeOptimalSolution(board, SIZE) || [];
+            }
+
             updateDisplay();
             checkWin();
         }
